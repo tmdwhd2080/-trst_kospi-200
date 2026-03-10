@@ -16,15 +16,13 @@ import settings as cfg
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-# ───────────────────── 환경 변수 로드 ─────────────────────
 APP_KEY = os.getenv("KIS_APP_KEY")
 APP_SECRET = os.getenv("KIS_APP_SECRET")
 ACCOUNT_NO = os.getenv("KIS_ACCOUNT_NO")
 ACCOUNT_CODE = os.getenv("KIS_ACCOUNT_CODE")
 BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
 
-# ───────────────────── 토큰 관리 ─────────────────────
+# 토큰 불러오기
 _token_cache = {"token": None, "issued_at": 0}
 TOKEN_VALIDITY_SEC = cfg.TOKEN_VALIDITY_SEC
 
@@ -59,9 +57,8 @@ def get_access_token(force_refresh: bool = False) -> str:
     return token
 
 
-# ───────────────────── 시세 조회 ─────────────────────
+# 현재가 조회 기능
 def get_current_price(stock_code: str) -> int | None:
-    """국내 주식 현재가 조회. 실패 시 None 반환."""
     token = get_access_token()
     url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price"
     headers = {
@@ -83,9 +80,8 @@ def get_current_price(stock_code: str) -> int | None:
     return None
 
 
-# ───────────────────── 주문 함수 ─────────────────────
+# api 주문
 def _place_order(tr_id: str, stock_code: str, qty: int, price: int) -> dict:
-    """주문 공통 내부 함수."""
     token = get_access_token()
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/order-cash"
     headers = {
@@ -120,9 +116,8 @@ def sell_limit_order(stock_code: str, qty: int, price: int) -> dict:
     return _place_order("TTTC0801U", stock_code, qty, price)
 
 
-# ───────────────────── 잔고 조회 ─────────────────────
+# 잔고 조회
 def get_balance() -> list[dict] | None:
-    """주식 잔고 조회. 보유 종목 리스트 반환."""
     token = get_access_token()
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance"
     headers = {

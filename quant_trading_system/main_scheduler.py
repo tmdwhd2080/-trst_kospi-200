@@ -1,9 +1,4 @@
 """
-main_scheduler.py — 퀀트 트레이딩 시스템 컨트롤 타워
-═══════════════════════════════════════════════════════
-이 파일만 실행하면 됩니다:
-    python3 main_scheduler.py
-
 기능:
   1. Gemini API로 오늘의 스케줄을 생성/확인
   2. 스케줄에 따라 크롤러·전략을 자동 실행
@@ -24,10 +19,9 @@ import schedule
 from dotenv import load_dotenv
 import settings as cfg
 
-# ── 환경 변수 로드 ──────────────────────────────
 load_dotenv()
 
-# ── 로깅 설정 ───────────────────────────────────
+# logging 설정
 LOG_FORMAT = "[%(asctime)s] %(levelname)-7s %(name)s — %(message)s"
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +34,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scheduler")
 
-# ── Gemini API 설정 ─────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = cfg.GEMINI_MODEL
 
@@ -57,9 +50,8 @@ except Exception as e:
     logger.warning(f"Gemini API 사용 불가 — 기본 스케줄로 동작합니다: {e}")
 
 
-# ═══════════════════════════════════════════════════
 #  모듈 레지스트리: 실행 가능한 작업 목록
-# ═══════════════════════════════════════════════════
+
 TASK_REGISTRY = {
     "krx_disclosure": {
         "module": "scrapers.krx_kind_crawler",
@@ -83,20 +75,12 @@ TASK_REGISTRY = {
     },
 }
 
-# ═══════════════════════════════════════════════════
-#  기본 스케줄 (settings.py에서 로드)
-# ═══════════════════════════════════════════════════
+#  기본 스케줄 (settings.py에서 관리)
 DEFAULT_SCHEDULE = cfg.DEFAULT_SCHEDULE
 
 
-# ═══════════════════════════════════════════════════
-#  Gemini 스케줄 생성
-# ═══════════════════════════════════════════════════
+#  Gemini 추천 스케줄 생성
 def ask_gemini_for_schedule() -> list[dict] | None:
-    """
-    Gemini에게 오늘 실행할 스케줄을 요청.
-    실패 시 None 반환 → DEFAULT_SCHEDULE 사용.
-    """
     if not GEMINI_AVAILABLE or not cfg.USE_GEMINI_SCHEDULER:
         return None
 
