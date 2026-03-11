@@ -5,22 +5,18 @@
 - 지정가 매수/매도 주문
 """
 
-import os
 import time
 import json
 import logging
 import requests
-from dotenv import load_dotenv
 import settings as cfg
 
-load_dotenv()
-
 logger = logging.getLogger(__name__)
-APP_KEY = os.getenv("KIS_APP_KEY")
-APP_SECRET = os.getenv("KIS_APP_SECRET")
-ACCOUNT_NO = os.getenv("KIS_ACCOUNT_NO")
-ACCOUNT_CODE = os.getenv("KIS_ACCOUNT_CODE")
-BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
+APP_KEY = cfg.KIS_APP_KEY
+APP_SECRET = cfg.KIS_APP_SECRET
+ACCOUNT_NO = cfg.KIS_ACCOUNT_NO
+ACCOUNT_CODE = cfg.KIS_ACCOUNT_CODE
+BASE_URL = cfg.KIS_BASE_URL
 
 # 토큰 불러오기
 _token_cache = {"token": None, "issued_at": 0}

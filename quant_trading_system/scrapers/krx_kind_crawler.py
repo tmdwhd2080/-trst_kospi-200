@@ -4,17 +4,25 @@ KRX KIND 공시 모니터링 크롤러
 - 키워드 기반 필터링 (유상증자, 무상증자, 합병, 분할 등)
 """
 
+# ═══════════════════════════════════════════════════
+#  ⚙ 크롤러 개별 설정 — 이 영역의 값만 수정하세요
+# ═══════════════════════════════════════════════════
+CRAWL_PAGE_SIZE = 100           # 한 번에 가져올 공시 건수
+ALERT_KEYWORDS = [
+    "유상증자", "무상증자", "합병", "분할", "자사주",
+    "배당", "대규모내부거래", "공개매수", "상장폐지",
+    "액면분할", "전환사채", "신주인수권",
+]
+# ═══════════════════════════════════════════════════
+
 import logging
 import datetime
 import requests
 from bs4 import BeautifulSoup
-import settings as cfg
 
 logger = logging.getLogger(__name__)
 
 KIND_URL = "https://kind.krx.co.kr/disclosure/todaydisclosure.do"
-
-ALERT_KEYWORDS = cfg.KRX_ALERT_KEYWORDS
 
 
 def fetch_today_disclosures() -> list[dict]:
@@ -33,7 +41,7 @@ def fetch_today_disclosures() -> list[dict]:
     }
     params = {
         "method": "searchTodayDisclosureSub",
-        "currentPageSize": str(cfg.KRX_CRAWL_PAGE_SIZE),
+        "currentPageSize": str(CRAWL_PAGE_SIZE),
         "pageIndex": "1",
         "orderMode": "0",
         "orderStat": "D",

@@ -6,7 +6,6 @@
   4. 토큰 자동 갱신, 에러 복구, 24시간 무중단 운영
 """
 
-import os
 import sys
 import json
 import time
@@ -16,10 +15,7 @@ import traceback
 from importlib import import_module
 
 import schedule
-from dotenv import load_dotenv
 import settings as cfg
-
-load_dotenv()
 
 # logging 설정
 LOG_FORMAT = "[%(asctime)s] %(levelname)-7s %(name)s — %(message)s"
@@ -34,20 +30,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scheduler")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = cfg.GEMINI_MODEL
+# ═════════════════════════════════════════════════
+#  AI 클라이언트 초기화 (Gemini / GPT)
+# ═════════════════════════════════════════════════
+_gemini_model = None
+_openai_client = None
 
-try:
-    import google.generativeai as genai
+if cfg.AI_PROVIDER == "gemini":
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=cfg.GEMINI_API_KEY)
+        _gemini_model = genai.GenerativeModel(cfg.GEMINI_MODEL)
+        logger.info(f"Gemini API 연결 완료 (모델: {cfg.GEMINI_MODEL})")
+    except Exception as e:
+        logger.warning(f"Gemini API 초기화 실패: {e}")
+elif cfg.AI_PROVIDER == "gpt":
+    try:
+        from openai import OpenAI
+        _openai_client = OpenAI(api_key=cfg.GPT_API_KEY)
+        logger.info(f"OpenAI API 연결 완료 (모델: {cfg.GPT_MODEL})")
+    except Exception as e:
+        logger.warning(f"OpenAI API 초기화 실패: {e}")
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel(GEMINI_MODEL)
-    GEMINI_AVAILABLE = True
-    logger.info(f"Gemini API 연결 완료 (모델: {GEMINI_MODEL})")
-except Exception as e:
-    GEMINI_AVAILABLE = False
-    gemini_model = None
-    logger.warning(f"Gemini API 사용 불가 — 기본 스케줄로 동작합니다: {e}")
+AI_AVAILABLE = _gemini_model is not None or _openai_client is not None
+if not AI_AVAILABLE:
+    logger.warning("AI API 사용 불가 — 기본 스케줄로 동작합니다")
+
+
+def _ai_generate(prompt: str) -> str | None:
+    """설정된 AI_PROVIDER에 따라 Gemini 또는 GPT를 호출하여 응답 텍스트를 반환."""
+    try:
+        if cfg.AI_PROVIDER == "gemini" and _gemini_model:
+            response = _gemini_model.generate_content(prompt)
+            return response.text.strip()
+        elif cfg.AI_PROVIDER == "gpt" and _openai_client:
+            response = _openai_client.chat.completions.create(
+                model=cfg.GPT_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+            )
+            return response.choices[0].message.content.strip()
+    except Exception as e:
+        logger.error(f"AI 호출 실패 ({cfg.AI_PROVIDER}): {e}")
+    return None
 
 
 #  모듈 레지스트리: 실행 가능한 작업 목록
@@ -81,7 +106,7 @@ DEFAULT_SCHEDULE = cfg.DEFAULT_SCHEDULE
 
 #  Gemini 추천 스케줄 생성
 def ask_gemini_for_schedule() -> list[dict] | None:
-    if not GEMINI_AVAILABLE or not cfg.USE_GEMINI_SCHEDULER:
+    if not AI_AVAILABLE or not cfg.USE_AI_SCHEDULER:
         return None
 
     today = datetime.date.today()
@@ -114,26 +139,27 @@ JSON 배열만 반환하세요. 다른 텍스트 없이 순수 JSON만 출력하
 """
 
     try:
-        response = gemini_model.generate_content(prompt)
-        text = response.text.strip()
+        text = _ai_generate(prompt)
+        if text is None:
+            return None
         # Markdown 코드 블록 제거
         if text.startswith("```"):
             text = text.split("\n", 1)[1]
             text = text.rsplit("```", 1)[0]
         result = json.loads(text)
         if isinstance(result, list):
-            logger.info(f"Gemini 스케줄 수신: {len(result)}개 작업")
+            logger.info(f"AI 스케줄 수신: {len(result)}개 작업")
             return result
     except Exception as e:
-        logger.error(f"Gemini 스케줄 생성 실패: {e}")
+        logger.error(f"AI 스케줄 생성 실패: {e}")
     return None
 
 
 def ask_gemini_for_action(task_name: str, task_result: dict) -> str | None:
     """
-    작업 결과를 Gemini에게 보내고, 후속 조치 의견을 받음.
+    작업 결과를 AI에게 보내고, 후속 조치 의견을 받음.
     """
-    if not GEMINI_AVAILABLE or not cfg.USE_GEMINI_ADVISOR:
+    if not AI_AVAILABLE or not cfg.USE_AI_ADVISOR:
         return None
 
     result_summary = json.dumps(task_result, ensure_ascii=False, default=str)[:2000]
@@ -153,12 +179,12 @@ def ask_gemini_for_action(task_name: str, task_result: dict) -> str | None:
 """
 
     try:
-        response = gemini_model.generate_content(prompt)
-        text = response.text.strip()
-        logger.info(f"Gemini 어드바이저 응답: {text}")
-        return text
+        text = _ai_generate(prompt)
+        if text:
+            logger.info(f"AI 어드바이저 응답: {text}")
+            return text
     except Exception as e:
-        logger.error(f"Gemini 어드바이저 호출 실패: {e}")
+        logger.error(f"AI 어드바이저 호출 실패: {e}")
     return None
 
 
@@ -213,10 +239,10 @@ def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
             if len(parts) > 1:
                 next_task = parts[1].strip()
                 if next_task in TASK_REGISTRY:
-                    logger.info(f"Gemini 권고에 따라 추가 실행: {next_task}")
+                    logger.info(f"AI 권고에 따라 추가 실행: {next_task}")
                     execute_task(next_task, dry_run=dry_run)
         elif action and "ACTION: ALERT" in action:
-            logger.warning(f"⚠ Gemini 알림: {action}")
+            logger.warning(f"⚠ AI 알림: {action}")
 
         return result
 
@@ -260,8 +286,8 @@ def print_banner():
     active = [t for t, on in cfg.ENABLE_TASKS.items() if on]
     print(f"\n  모드: {mode}")
     print(f"  활성 작업: {', '.join(active)}")
-    print(f"  Gemini 스케줄러: {'ON' if cfg.USE_GEMINI_SCHEDULER else 'OFF'}")
-    print(f"  Gemini 어드바이저: {'ON' if cfg.USE_GEMINI_ADVISOR else 'OFF'}")
+    print(f"  Gemini 스케줄러: {'ON' if cfg.USE_AI_SCHEDULER else 'OFF'}")
+    print(f"  Gemini 어드바이저: {'ON' if cfg.USE_AI_ADVISOR else 'OFF'}")
     print()
 
 
@@ -282,16 +308,16 @@ def main():
     gemini_schedule = ask_gemini_for_schedule()
 
     if gemini_schedule is not None:
-        # Gemini 스케줄 유효성 검증
+        # AI 스케줄 유효성 검증
         valid_schedule = [
             item for item in gemini_schedule
             if item.get("task") in TASK_REGISTRY and item.get("time")
         ]
         if valid_schedule:
-            logger.info(f"Gemini 스케줄 적용 ({len(valid_schedule)}개 작업)")
+            logger.info(f"AI 스케줄 적용 ({len(valid_schedule)}개 작업)")
             today_schedule = valid_schedule
         else:
-            logger.warning("Gemini 스케줄이 비어있음 (주말/공휴일?) — 대기 모드")
+            logger.warning("AI 스케줄이 비어있음 (주말/공휴일?) — 대기 모드")
             today_schedule = []
     else:
         logger.info("기본 스케줄 적용")

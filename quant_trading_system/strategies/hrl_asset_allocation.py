@@ -8,15 +8,28 @@
 ⚠ 이 파일은 구조 예시입니다. 실제 모델은 직접 구현하세요.
 """
 
+# ═══════════════════════════════════════════════════
+#  ⚙ 전략 개별 설정 — 이 영역의 값만 수정하세요
+# ═══════════════════════════════════════════════════
+ASSET_UNIVERSE = {
+    "equity":   ["005930", "000660", "035420"],     # 주식
+    "bond_etf": ["148070"],                          # 채권 ETF
+    "gold_etf": ["411060"],                          # 금 ETF
+}
+REGIME_RULES = {
+    "Extreme Fear": {"equity": 0.2, "bond_etf": 0.5, "gold_etf": 0.3},
+    "Fear":         {"equity": 0.3, "bond_etf": 0.4, "gold_etf": 0.3},
+    "Neutral":      {"equity": 0.5, "bond_etf": 0.3, "gold_etf": 0.2},
+    "Greed":        {"equity": 0.7, "bond_etf": 0.2, "gold_etf": 0.1},
+    "Extreme Greed":{"equity": 0.8, "bond_etf": 0.1, "gold_etf": 0.1},
+}
+ORDER_QTY = 1                   # 종목당 기본 주문 수량
+# ═══════════════════════════════════════════════════
+
 import logging
 from utils.kis_api import get_current_price, buy_limit_order, sell_limit_order
-import settings as cfg
 
 logger = logging.getLogger(__name__)
-
-ASSET_UNIVERSE = cfg.HRL_ASSET_UNIVERSE
-
-REGIME_RULES = cfg.HRL_REGIME_RULES
 
 
 def determine_regime(macro_data: dict | None) -> str:
@@ -62,7 +75,7 @@ def run(macro_data: dict | None = None, dry_run: bool = True) -> dict:
                 logger.warning(f"  {code} 가격 조회 실패, 건너뜀")
                 continue
 
-            qty = cfg.HRL_ORDER_QTY
+            qty = ORDER_QTY
             order_info = {
                 "asset_class": asset_class,
                 "stock_code": code,

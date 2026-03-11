@@ -8,15 +8,25 @@
 ⚠ 이 파일은 구조 예시입니다. 실제 전략 로직은 직접 구현하세요.
 """
 
+# ═══════════════════════════════════════════════════
+#  ⚙ 전략 개별 설정 — 이 영역의 값만 수정하세요
+# ═══════════════════════════════════════════════════
+UNIVERSE = [
+    "005930",   # 삼성전자
+    "000660",   # SK하이닉스
+    "035420",   # NAVER
+    "005380",   # 현대차
+    "051910",   # LG화학
+]
+MAX_STOCKS = 3               # 최대 편입 종목 수
+ALLOCATION_PCT = 0.30        # 종목당 최대 투자 비중 (0.0 ~ 1.0)
+ORDER_QTY = 1                # 종목당 기본 주문 수량
+# ═══════════════════════════════════════════════════
+
 import logging
 from utils.kis_api import get_current_price, buy_limit_order, get_balance
-import settings as cfg
 
 logger = logging.getLogger(__name__)
-
-UNIVERSE = cfg.FACTOR_UNIVERSE
-MAX_STOCKS = cfg.FACTOR_MAX_STOCKS
-ALLOCATION_PCT = cfg.FACTOR_ALLOCATION_PCT
 
 
 def calculate_momentum_score(stock_code: str) -> float:
@@ -81,7 +91,7 @@ def run(macro_data: dict | None = None, dry_run: bool = True) -> dict:
         price = get_current_price(code)
         if price is None:
             continue
-        qty = cfg.FACTOR_ORDER_QTY
+        qty = ORDER_QTY
         order_info = {"stock_code": code, "price": price, "qty": qty}
 
         if dry_run:

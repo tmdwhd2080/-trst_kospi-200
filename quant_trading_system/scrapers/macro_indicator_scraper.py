@@ -6,10 +6,21 @@
 - 원/달러 환율
 """
 
+# ═══════════════════════════════════════════════════
+#  ⚙ 수집기 개별 설정 — 이 영역의 값만 수정하세요
+# ═══════════════════════════════════════════════════
+VIX_THRESHOLDS = {
+    "extreme_greed": 12,    # 이하 → Extreme Greed
+    "greed": 18,            # 이하 → Greed
+    "neutral": 25,          # 이하 → Neutral
+    "fear": 30,             # 이하 → Fear
+    # 초과 → Extreme Fear
+}
+# ═══════════════════════════════════════════════════
+
 import logging
 import requests
 from bs4 import BeautifulSoup
-import settings as cfg
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +68,7 @@ def fetch_fear_greed_index() -> dict | None:
     vix = fetch_vix()
     if vix is None:
         return None
-    thresholds = cfg.VIX_THRESHOLDS
+    thresholds = VIX_THRESHOLDS
     if vix <= thresholds["extreme_greed"]:
         sentiment = "Extreme Greed"
     elif vix <= thresholds["greed"]:
