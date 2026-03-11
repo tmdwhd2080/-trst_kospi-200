@@ -8,15 +8,14 @@ settings.py — 퀀트 트레이딩 시스템 통합 설정
 #  주문 설정
 DRY_RUN = True          # True: 시뮬레이션 (주문 안 나감) / False: 실전 주문
 
-#  2. API 설정 (Gemini / GPT 선택) ->  지금은 굳이 필요 없음
+#  2. API 설정 (Gemini / GPT 선택)
 
 AI_PROVIDER = "gemini"                  # "gemini" 또는 "gpt"
 GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"  # Google Gemini API 키
 GEMINI_MODEL = "gemini-2.0-flash"       # Gemini 모델명
 GPT_API_KEY = "YOUR_GPT_API_KEY"        # OpenAI GPT API 키
 GPT_MODEL = "gpt-4o-mini"              # GPT 모델명
-USE_AI_SCHEDULER = False                # True: AI가 스케줄 생성 / False: 기본 스케줄 사용
-USE_AI_ADVISOR = False                   # True: 작업 결과를 AI에게 전달하여 후속 판단
+USE_AI_BRIEFING = True                  # True: AI 시장 브리핑 & 종가 예측 사용
 
 #  3. 한국투자증권 API 키
 KIS_APP_KEY = ""
@@ -25,25 +24,29 @@ KIS_ACCOUNT_NO = ""      # 계좌번호 앞 8자리
 KIS_ACCOUNT_CODE = "01"                 # 계좌 상품코드
 KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 
-#  4. 전략 및 스크래퍼 활성화 여부 설정 -> 다 예시 전략/ 스크랩핑
+#  4. 전략 및 스크래퍼 활성화 여부 설정
 ENABLE_TASKS = {
-    "krx_disclosure":   False,   # KRX KIND 공시 크롤링
-    "macro_indicators": True,   # 매크로 지표 수집 (VIX, 환율, 심리지수)
-    "factor_momentum":  True,   # 팩터/모멘텀 전략
-    "hrl_allocation":   False,   # HRL 자산 배분 전략
+    "krx_disclosure":     False,   # KRX KIND 공시 크롤링
+    "macro_indicators":   True,    # 매크로 지표 수집 (VIX, 환율, 심리지수)
+    "ai_briefing":        True,    # AI 시장 브리핑 & 종가 예측 (아침)
+    "factor_momentum":    True,    # 팩터/모멘텀 전략
+    "hrl_allocation":     False,   # HRL 자산 배분 전략
+    "ai_closing_review":  True,    # AI 장 마감 리뷰 (예측 vs 실제 비교)
 }
 
-#  5. 기본 스케줄 -> 본인 스케줄 없을 시 -> 이걸로 본인이 하는게 더 나을듯,,
+#  5. 기본 스케줄 (하드코딩)
 #     ※ ENABLE_TASKS에서 비활성화된 작업은 자동 제외됩니다
 DEFAULT_SCHEDULE = [
-    {"time": "08:50", "task": "macro_indicators", "description": "장 시작 전 매크로 지표 수집"},
-    {"time": "09:05", "task": "krx_disclosure",   "description": "장 시작 후 공시 수집"},
-    {"time": "09:10", "task": "factor_momentum",  "description": "팩터/모멘텀 전략 실행"},
-    {"time": "09:15", "task": "hrl_allocation",   "description": "HRL 자산 배분 전략 실행"},
-    {"time": "12:00", "task": "krx_disclosure",   "description": "점심 공시 수집"},
-    {"time": "12:05", "task": "macro_indicators", "description": "점심 매크로 지표 갱신"},
-    {"time": "15:20", "task": "krx_disclosure",   "description": "장 마감 전 공시 수집"},
-    {"time": "15:35", "task": "macro_indicators", "description": "장 마감 후 매크로 지표 최종 수집"},
+    {"time": "08:50", "task": "macro_indicators",  "description": "장 시작 전 매크로 지표 수집"},
+    {"time": "08:55", "task": "ai_briefing",        "description": "AI 시장 브리핑 & 종가 예측"},
+    {"time": "09:05", "task": "krx_disclosure",     "description": "장 시작 후 공시 수집"},
+    {"time": "09:10", "task": "factor_momentum",    "description": "팩터/모멘텀 전략 실행"},
+    {"time": "09:15", "task": "hrl_allocation",     "description": "HRL 자산 배분 전략 실행"},
+    {"time": "12:00", "task": "krx_disclosure",     "description": "점심 공시 수집"},
+    {"time": "12:05", "task": "macro_indicators",   "description": "점심 매크로 지표 갱신"},
+    {"time": "15:20", "task": "krx_disclosure",     "description": "장 마감 전 공시 수집"},
+    {"time": "15:35", "task": "macro_indicators",   "description": "장 마감 후 매크로 지표 최종 수집"},
+    {"time": "15:45", "task": "ai_closing_review",  "description": "AI 장 마감 리뷰 (예측 vs 실제 비교)"},
 ]
 
 #  6. 스케줄러 설정
