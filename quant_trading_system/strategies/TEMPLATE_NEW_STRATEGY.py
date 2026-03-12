@@ -15,10 +15,8 @@
   반드시 작성해야 합니다.
 """
 
-# ═══════════════════════════════════════════════════
-#  📋 작업 메타데이터 — integrate_strategy.py가 읽어갑니다
-#     반드시 모든 필드를 작성하세요!
-# ═══════════════════════════════════════════════════
+#  작업 메타데이터 — integrate_strategy.py가 읽어갑니다
+#     반드시 모든 필드를 작성하세요! -> 얘도 이거 Tjdiwl integrate_strategy.py가 알아서 main_scheduler.py와 settings.py에 등록해주기 때문에 작성 필수임.
 TASK_META = {
     "task_id": "my_strategy_name",           # 고유 작업 ID (영문 소문자 + 언더스코어)
     "description": "나의 새 전략 설명",        # 작업 설명 (한글 가능)
@@ -42,6 +40,8 @@ TASK_META = {
 # 예: ALLOCATION_PCT = 0.30
 # ═══════════════════════════════════════════════════
 
+
+# 얘도 이거 llm한테 주거나 아니면 맘대로 쓰고 copilot 딸깍 해도 되긴 함
 import logging
 from utils.kis_api import get_current_price, buy_limit_order
 
@@ -49,22 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(macro_data: dict | None = None, dry_run: bool = True) -> dict:
-    """
-    전략 실행 진입점.
 
-    ※ 반드시 이 함수 시그니처를 유지하세요:
-      - 함수명: run
-      - 파라미터: macro_data (dict|None), dry_run (bool)
-      - 반환: dict
-
-    Args:
-        macro_data: 매크로 지표 수집기(macro_indicator_scraper) 결과
-                    예: {"vix": 18.5, "usd_krw": 1350.0, "sentiment": "Neutral"}
-        dry_run: True면 주문 실행 안 함 (시뮬레이션), False면 실전 주문
-
-    Returns:
-        dict: 전략 실행 결과 (자유 형식)
-    """
     logger.info("=== 나의 전략 실행 ===")
 
     # TODO: 전략 로직을 여기에 구현하세요

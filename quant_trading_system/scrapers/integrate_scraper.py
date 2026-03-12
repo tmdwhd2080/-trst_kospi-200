@@ -1,11 +1,10 @@
 """
-새 스크래퍼 자동 통합 스크립트
-────────────────────────────────
+새 스크래퍼 자동 통합 스크립트 -> 이걸 돌리면 새로운 scrapper가 폴더 전체에 반영
 사용법:
-  python scrapers/integrate_scraper.py <새_스크래퍼_파일_경로>
+  python quant_trading_system/scrapers/integrate_scraper.py <새_스크래퍼_파일_경로>
 
 예시:
-  python scrapers/integrate_scraper.py scrapers/naver_news_scraper.py
+  python quant_trading_system/scrapers/integrate_scraper.py quant_trading_system/scrapers/naver_news_scraper.py
 
 이 스크립트는 새로 작성한 스크래퍼 파일의 TASK_META를 읽어
 아래 파일들을 자동으로 수정합니다:

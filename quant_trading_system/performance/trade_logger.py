@@ -1,16 +1,6 @@
 """
 주문 기록 & 일별 수익률 로거
-──────────────────────────────
-전략의 run() 함수에서 호출하여 주문 내역과 일별 수익률을 CSV로 기록합니다.
-
-사용법 (전략 내부):
-    from performance.trade_logger import log_order, log_daily_return
-
-    # 개별 주문 기록
-    log_order("factor_momentum", "005930", "buy", 10, 55000)
-
-    # 일별 수익률 기록 (장 마감 시점)
-    log_daily_return("factor_momentum", portfolio_value=10_500_000, daily_pnl=50_000, daily_return_pct=0.48)
+전략별 주문 내역과 일별 수익률을 CSV로 기록합니다. -> 성과 평가용
 """
 
 import os

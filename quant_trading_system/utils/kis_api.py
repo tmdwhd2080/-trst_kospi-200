@@ -113,9 +113,8 @@ def sell_limit_order(stock_code: str, qty: int, price: int) -> dict:
     return _place_order("TTTC0801U", stock_code, qty, price)
 
 
-# ═══════════════════════════════════════════════════
-#  해외 주식 API
-# ═══════════════════════════════════════════════════
+#  해외 주식 API -> 해외 주식 용
+
 # 거래소 코드 매핑
 EXCHANGE_CODE = {
     "NASD": "NASD",   # 나스닥
@@ -131,9 +130,6 @@ EXCHANGE_CODE = {
 def get_overseas_current_price(exchange: str, stock_code: str) -> float | None:
     """
     해외 주식 현재가 조회.
-    Args:
-        exchange: 거래소 코드 (NASD, NYSE, AMEX, SEHK, SHAA, SZAA, TKSE)
-        stock_code: 종목 티커 (예: AAPL, TSLA)
     """
     token = get_access_token()
     url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price"
@@ -226,9 +222,7 @@ def get_overseas_balance() -> list[dict] | None:
     return None
 
 
-# ═══════════════════════════════════════════════════
-#  국내 잔고 조회
-# ═══════════════════════════════════════════════════
+#  국내 잔고 조회  -> 본인 잔고 궁금할 경우
 def get_balance() -> list[dict] | None:
     token = get_access_token()
     url = f"{BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance"

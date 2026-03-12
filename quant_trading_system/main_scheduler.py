@@ -30,9 +30,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scheduler")
 
-# ═════════════════════════════════════════════════
 #  AI 클라이언트 초기화 (Gemini / GPT) — 브리핑 & 예측용
-# ═════════════════════════════════════════════════
 _gemini_model = None
 _openai_client = None
 
@@ -75,9 +73,7 @@ def _ai_generate(prompt: str) -> str | None:
     return None
 
 
-# ═══════════════════════════════════════════════════
 #  모듈 레지스트리: 실행 가능한 작업 목록
-# ═══════════════════════════════════════════════════
 TASK_REGISTRY = {
     "krx_disclosure": {
         "module": "scrapers.krx_kind_crawler",
@@ -116,18 +112,13 @@ TASK_REGISTRY = {
 DEFAULT_SCHEDULE = cfg.DEFAULT_SCHEDULE
 
 
-# ═══════════════════════════════════════════════════
+
 #  작업 실행 엔진
-# ═══════════════════════════════════════════════════
-# 최근 매크로 데이터 캐시 (전략·브리핑에서 참조)
+
 _macro_cache: dict = {}
 
 
 def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
-    """
-    레지스트리에 등록된 작업을 동적으로 로드하여 실행.
-    dry_run이 None이면 settings.DRY_RUN 값을 사용.
-    """
     global _macro_cache
 
     if dry_run is None:
@@ -173,10 +164,7 @@ def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
         logger.debug(traceback.format_exc())
         return None
 
-
-# ═══════════════════════════════════════════════════
 #  스케줄 등록 및 메인 루프
-# ═══════════════════════════════════════════════════
 def _get_last_task_time(schedule_items: list[dict]) -> str | None:
     """활성화된 작업 중 마지막 예정 시간을 반환."""
     active_times = [
@@ -268,7 +256,7 @@ def main():
         try:
             schedule.run_pending()
 
-            # 마지막 작업 시간 + 5분 경과 → 자동 종료
+            # 마지막 작업 시간 + 5분 경과 → 자동 종료 ->서버 자동 종료 기능
             now = datetime.datetime.now()
             if now >= shutdown_dt:
                 logger.info("=" * 50)

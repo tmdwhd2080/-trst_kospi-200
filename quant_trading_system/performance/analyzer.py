@@ -21,7 +21,6 @@ DAILY_RETURNS_CSV = os.path.join(_BASE_DIR, "data", "daily_returns.csv")
 
 
 def load_daily_returns(strategy_id: str, start_date: str, end_date: str) -> list[dict]:
-    """CSV에서 특정 전략의 일별 수익률을 기간 필터링하여 로드."""
     if not os.path.exists(DAILY_RETURNS_CSV):
         print(f"❌ 데이터 파일이 없습니다: {DAILY_RETURNS_CSV}")
         print("   전략 실행 후 trade_logger로 일별 수익률을 기록해야 합니다.")
@@ -47,7 +46,7 @@ def load_daily_returns(strategy_id: str, start_date: str, end_date: str) -> list
 
 
 def calc_cumulative_return(records: list[dict]) -> float:
-    """누적 수익률 (%) 계산. 복리 기준."""
+    """누적 수익률 (%) 계산"""
     if not records:
         return 0.0
     cumulative = 1.0
@@ -69,13 +68,11 @@ def calc_annualized_return(cumulative_return_pct: float, trading_days: int) -> f
 
 def calc_mdd(records: list[dict]) -> tuple[float, str, str]:
     """
-    MDD (Maximum Drawdown) 계산.
-    Returns: (MDD%, 고점 날짜, 저점 날짜)
+    MDD  계산.
     """
     if not records:
         return 0.0, "", ""
 
-    # 누적 자산 곡선 구성
     equity = [1.0]
     for r in records:
         equity.append(equity[-1] * (1 + r["daily_return_pct"] / 100))
@@ -96,7 +93,7 @@ def calc_mdd(records: list[dict]) -> tuple[float, str, str]:
             dd_peak_idx = peak_idx
             dd_trough_idx = i
 
-    # 인덱스 → 날짜 매핑 (첫 날은 시작 전이므로 records 기준 -1)
+    # 인덱스 → 날짜 매핑 
     peak_date = records[max(0, dd_peak_idx - 1)]["date"] if records else ""
     trough_date = records[min(dd_trough_idx - 1, len(records) - 1)]["date"] if records else ""
 
@@ -106,7 +103,6 @@ def calc_mdd(records: list[dict]) -> tuple[float, str, str]:
 def calc_sharpe_ratio(records: list[dict]) -> float:
     """
     샤프 비율 계산.
-    Sharpe = (평균 일별 초과수익률) / (일별 수익률 표준편차) × √252
     """
     if len(records) < 2:
         return 0.0
@@ -129,7 +125,7 @@ def calc_sharpe_ratio(records: list[dict]) -> float:
 
 
 def calc_win_rate(records: list[dict]) -> tuple[float, int, int]:
-    """승률 계산. Returns: (승률%, 이긴 날수, 진 날수)"""
+    """승률 계산"""
     wins = sum(1 for r in records if r["daily_pnl"] > 0)
     losses = sum(1 for r in records if r["daily_pnl"] < 0)
     total = wins + losses
@@ -138,7 +134,6 @@ def calc_win_rate(records: list[dict]) -> tuple[float, int, int]:
 
 
 def analyze():
-    """성과 분석 실행 (하드코딩 설정 기반)."""
     print()
     print("╔══════════════════════════════════════════════════╗")
     print("║         전략 성과 분석 (Performance Analyzer)     ║")

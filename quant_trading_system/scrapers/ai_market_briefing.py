@@ -1,7 +1,6 @@
 """
 AI 시장 브리핑 & 예측 시스템
-──────────────────────────────
-- 아침: 매크로 데이터를 기반으로 AI가 시장 브리핑 + 종가 예측
+- 아침: 매크로 데이터를 기반으로 AI가 시장 브리핑 + 종가 예측 -> Analyst_scrapers에 있는 매크로 데이터 사용
 - 장 마감 후: 실제 종가 vs 예측 비교 → 학습 로그 저장
 - 로그 파일: logs/ai_predictions.jsonl (매일 누적)
 """
@@ -18,12 +17,11 @@ logger = logging.getLogger(__name__)
 LOG_DIR = Path(__file__).parent.parent / "logs"
 PREDICTION_LOG = LOG_DIR / "ai_predictions.jsonl"
 
-# 오늘의 예측 캐시 (메모리)
 _today_prediction: dict = {}
 
 
 def _load_recent_reviews(n: int = 5) -> str:
-    """최근 n일간의 예측 리뷰 로그를 읽어 문자열로 반환 (학습 컨텍스트)."""
+    """최근 n일간의 예측 리뷰 로그를 읽어 문자열로 반환 -> training."""
     if not PREDICTION_LOG.exists():
         return "과거 예측 기록 없음 (첫 실행)"
 
@@ -67,12 +65,6 @@ def _load_recent_reviews(n: int = 5) -> str:
 def run(macro_data: dict | None = None, ai_generate=None) -> dict:
     """
     아침 브리핑: 매크로 데이터 기반 AI 시장 분석 + 종가 예측.
-
-    Args:
-        macro_data: macro_indicator_scraper 수집 결과
-        ai_generate: main_scheduler의 _ai_generate 함수 참조
-    Returns:
-        {"briefing": str, "predictions": {"kospi": float, "kosdaq": float, "kospi200": float}}
     """
     global _today_prediction
     logger.info("=== AI 시장 브리핑 실행 ===")
@@ -89,7 +81,7 @@ def run(macro_data: dict | None = None, ai_generate=None) -> dict:
 
     # 과거 예측 기록 (학습 컨텍스트)
     past_reviews = _load_recent_reviews(5)
-
+# 프롬프트 구체화 필수 -> 과거 로그 학습하는 방법 갈아엎어야 함
     today = datetime.date.today().isoformat()
     prompt = f"""당신은 한국 주식시장 전문 애널리스트입니다.
 오늘 날짜: {today}
@@ -101,10 +93,9 @@ def run(macro_data: dict | None = None, ai_generate=None) -> dict:
 {past_reviews}
 
 위 데이터를 분석하여 아래 두 가지를 수행하세요:
+1. 시장 브리핑: 오늘의 매크로 상황을 간결하게 요약하고, 시장에 미칠 영향을 분석하세요. (5줄 이내)
 
-1. **시장 브리핑**: 오늘의 매크로 상황을 간결하게 요약하고, 시장에 미칠 영향을 분석하세요. (5줄 이내)
-
-2. **종가 예측**: 아래 3개 지수의 오늘 종가를 소수점 2자리까지 예측하세요.
+2. 종가 예측: 아래 3개 지수의 오늘 종가를 소수점 2자리까지 예측하세요.(KOSPI, KOSDAQ, KOSPI200 세가지 지수에 대해 각각 예측)
    과거 예측 기록을 참고하여 오차를 줄이려고 노력하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요:
@@ -125,7 +116,6 @@ def run(macro_data: dict | None = None, ai_generate=None) -> dict:
             logger.error("AI 응답 없음")
             return {"briefing": None, "predictions": {}}
 
-        # Markdown 코드블록 제거
         if text.startswith("```"):
             text = text.split("\n", 1)[1]
             text = text.rsplit("```", 1)[0]
@@ -175,7 +165,7 @@ def run(macro_data: dict | None = None, ai_generate=None) -> dict:
 
 
 def _fetch_index_closing_price(symbol: str) -> float | None:
-    """Yahoo Finance에서 지수 종가 조회."""
+    """Yahoo Finance에서 지수 종가 조회. -> PYKRX가 훨씬 나을듯"""
     import requests
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
     params = {"interval": "1d", "range": "1d"}
@@ -193,11 +183,6 @@ def _fetch_index_closing_price(symbol: str) -> float | None:
 def run_closing_review(ai_generate=None) -> dict:
     """
     장 마감 후 실행: 실제 종가 vs 예측 비교 → 로그 저장.
-
-    Args:
-        ai_generate: main_scheduler의 _ai_generate 함수 참조
-    Returns:
-        {"actuals": dict, "errors": dict, "review": str}
     """
     global _today_prediction
     logger.info("=== AI 장 마감 리뷰 실행 ===")

@@ -15,10 +15,8 @@
   반드시 작성해야 합니다.
 """
 
-# ═══════════════════════════════════════════════════
-#  📋 작업 메타데이터 — integrate_scraper.py가 읽어갑니다
-#     반드시 모든 필드를 작성하세요!
-# ═══════════════════════════════════════════════════
+#  작업 메타데이터 — integrate_scraper.py가 읽어갑니다
+#  이거 있어야지 integrate_scraper.py가 알아서 main_scheduler.py와 settings.py에 등록해주기 때문에 작성 필수임.
 TASK_META = {
     "task_id": "my_scraper_name",            # 고유 작업 ID (영문 소문자 + 언더스코어)
     "description": "나의 새 스크래퍼 설명",    # 작업 설명 (한글 가능)
@@ -26,11 +24,11 @@ TASK_META = {
     "enabled": True,                          # 활성화 여부 (True/False)
     "schedule": [
         {
-            "time": "09:00",                  # ★ 실행 시작 시간 (HH:MM, 필수)
-            "force_kill_time": "09:30",       # ★ 강제 종료 시간 (HH:MM, 필수)
+            "time": "09:00",                  #  실행 시작 시간 (HH:MM, 필수)
+            "force_kill_time": "09:30",       #  강제 종료 시간 (HH:MM, 필수)
             "description": "나의 스크래퍼 실행",
         },
-        # 하루에 여러 번 실행하려면 항목을 추가하세요:
+        # 하루에 해당 전략을 여러 번 실행하려면 항목을 추가:
         # {
         #     "time": "14:00",
         #     "force_kill_time": "14:30",
@@ -47,6 +45,8 @@ TASK_META = {
 # 예: PAGE_SIZE = 100
 # ═══════════════════════════════════════════════════
 
+
+# 이거 주고 llm 한테 맞춰 달라고 하면 맞춰줌 -> 되도록 copilot 쓰면 그냥 딸깍이긴함,...
 import logging
 
 logger = logging.getLogger(__name__)
