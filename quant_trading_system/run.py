@@ -46,7 +46,7 @@ except ImportError:
 # 프로젝트 루트 
 PROJECT_DIR = Path(__file__).parent
 
-# 업로드할 파일 목록
+# 서버에 업로드할 파일 목록
 UPLOAD_ITEMS = [
     "main_scheduler.py",
     "settings.py",

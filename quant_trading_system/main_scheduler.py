@@ -109,6 +109,7 @@ TASK_REGISTRY = {
         "description": "HRL 기반 자산 배분 전략",
         "type": "strategy",
     },
+    # __INTEGRATE_MARKER_TASK_REGISTRY__
 }
 
 # 기본 스케줄 (settings.py 하드코딩)
