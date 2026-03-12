@@ -12,6 +12,7 @@ import time
 import logging
 import datetime
 import traceback
+import threading
 from importlib import import_module
 
 import schedule
@@ -105,6 +106,12 @@ TASK_REGISTRY = {
         "description": "HRL 기반 자산 배분 전략",
         "type": "strategy",
     },
+    "stock_scrapping": {
+        "module": "scrapers.stock_scrapping",
+        "description": "장중 주가 OHLCV 수집",
+        "type": "scraper",
+        "run_in_background": True,
+    },
     # __INTEGRATE_MARKER_TASK_REGISTRY__
 }
 
@@ -116,6 +123,31 @@ DEFAULT_SCHEDULE = cfg.DEFAULT_SCHEDULE
 #  작업 실행 엔진
 
 _macro_cache: dict = {}
+_background_tasks: dict[str, threading.Thread] = {}
+_prefetched_kis_token: str | None = None
+
+
+def _start_background_task(task_id: str, mod, *, prefetched_token: str | None = None) -> dict:
+    existing = _background_tasks.get(task_id)
+    if existing and existing.is_alive():
+        logger.info(f"⏭ 백그라운드 작업 이미 실행 중: {task_id}")
+        return {"status": "already_running", "background": True}
+
+    def _runner():
+        try:
+            mod.run(prefetched_token=prefetched_token)
+            logger.info(f"✔ 백그라운드 작업 완료: {task_id}")
+        except Exception as exc:
+            logger.error(f"✘ 백그라운드 작업 실패: {task_id} — {exc}")
+            logger.debug(traceback.format_exc())
+        finally:
+            _background_tasks.pop(task_id, None)
+
+    thread = threading.Thread(target=_runner, name=f"task-{task_id}", daemon=True)
+    _background_tasks[task_id] = thread
+    thread.start()
+    logger.info(f"↪ 백그라운드 작업 시작: {task_id}")
+    return {"status": "started", "background": True}
 
 
 def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
@@ -138,6 +170,9 @@ def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
     try:
         logger.info(f"▶ 작업 실행: {task_id} ({task_info['description']})")
         mod = import_module(module_path)
+
+        if task_info.get("run_in_background"):
+            return _start_background_task(task_id, mod, prefetched_token=_prefetched_kis_token)
 
         # AI 브리핑/리뷰 작업
         if task_id == "ai_briefing":
@@ -165,11 +200,65 @@ def execute_task(task_id: str, dry_run: bool | None = None) -> dict | None:
         return None
 
 #  스케줄 등록 및 메인 루프
+def _parse_schedule_time(time_str: str | None) -> datetime.time | None:
+    if not time_str:
+        return None
+    try:
+        hour, minute = map(int, time_str.split(":"))
+        return datetime.time(hour, minute)
+    except (TypeError, ValueError):
+        logger.warning(f"잘못된 스케줄 시간 형식, 즉시 실행 판단 건너뜀: {time_str}")
+        return None
+
+
+def _should_start_immediately(item: dict, now: datetime.datetime | None = None) -> bool:
+    task_id = item.get("task")
+    if not task_id or not cfg.ENABLE_TASKS.get(task_id, False):
+        return False
+
+    task_info = TASK_REGISTRY.get(task_id, {})
+    if not task_info.get("run_in_background"):
+        return False
+
+    module_path = task_info.get("module")
+    if module_path:
+        try:
+            mod = import_module(module_path)
+            should_start_now = getattr(mod, "should_start_now", None)
+            if callable(should_start_now) and not should_start_now(now=now):
+                return False
+        except Exception as exc:
+            logger.warning(f"즉시 실행 조건 확인 실패, 스케줄 기준만 사용: {task_id} ({exc})")
+
+    start_time = _parse_schedule_time(item.get("time"))
+    end_time = _parse_schedule_time(item.get("force_kill_time"))
+    if start_time is None or end_time is None:
+        return False
+
+    now = now or datetime.datetime.now()
+    current_time = now.time().replace(second=0, microsecond=0)
+    return start_time <= current_time <= end_time
+
+
+def trigger_startup_tasks(schedule_items: list[dict], now: datetime.datetime | None = None):
+    now = now or datetime.datetime.now()
+    for item in schedule_items:
+        if not _should_start_immediately(item, now):
+            continue
+
+        task_id = item["task"]
+        logger.info(
+            f"⏩ 현재 시각 {now.strftime('%H:%M')} 이(가) {task_id} 활성 구간 안에 있어 즉시 시작합니다 "
+            f"({item.get('time')}~{item.get('force_kill_time')})"
+        )
+        execute_task(task_id)
+
+
 def _get_last_task_time(schedule_items: list[dict]) -> str | None:
     """활성화된 작업 중 마지막 예정 시간을 반환."""
     active_times = [
-        item["time"] for item in schedule_items
-        if cfg.ENABLE_TASKS.get(item["task"], False) and item.get("time")
+        item.get("force_kill_time") or item["time"] for item in schedule_items
+        if cfg.ENABLE_TASKS.get(item["task"], False) and (item.get("force_kill_time") or item.get("time"))
     ]
     return max(active_times) if active_times else None
 
@@ -185,7 +274,11 @@ def register_schedule(schedule_items: list[dict]):
             logger.info(f"  ⏭ {t} → {task_id} (비활성화, 건너뜀)")
             continue
         schedule.every().day.at(t).do(execute_task, task_id=task_id)
-        logger.info(f"  📅 {t} → {task_id} ({desc})")
+        force_kill_time = item.get("force_kill_time")
+        if force_kill_time:
+            logger.info(f"  📅 {t} → {task_id} ({desc}, 종료 {force_kill_time})")
+        else:
+            logger.info(f"  📅 {t} → {task_id} ({desc})")
 
 
 def print_banner():
@@ -210,12 +303,14 @@ def print_banner():
 
 
 def main():
+    global _prefetched_kis_token
+
     print_banner()
 
     # 1. KIS API 토큰 사전 발급
     try:
         from utils.kis_api import get_access_token
-        token = get_access_token()
+        _prefetched_kis_token = get_access_token()
         logger.info("KIS 토큰 사전 발급 완료")
     except Exception as e:
         logger.warning(f"KIS 토큰 사전 발급 실패 (API 키 미설정?): {e}")
@@ -230,6 +325,7 @@ def main():
         logger.info("─" * 50)
         logger.info("등록된 스케줄:")
         register_schedule(today_schedule)
+        trigger_startup_tasks(today_schedule)
         logger.info("─" * 50)
     else:
         logger.info("실행할 작업이 없습니다. 종료합니다.")

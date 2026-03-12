@@ -5,3 +5,5 @@ openai
 schedule
 beautifulsoup4
 lxml
+schedule
+tzdata

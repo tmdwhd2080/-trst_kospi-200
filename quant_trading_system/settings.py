@@ -17,12 +17,23 @@ GPT_API_KEY = "YOUR_GPT_API_KEY"        # OpenAI GPT API 키
 GPT_MODEL = "gpt-4o-mini"              # GPT 모델명
 USE_AI_BRIEFING = True                  # AI 시장 브리핑 & 종가 예측 기능
 
-#  한국투자증권 API 키
-KIS_APP_KEY = ""
-KIS_APP_SECRET = ""
-KIS_ACCOUNT_NO = ""      # 계좌번호 앞 8자리
+#  3. 한국투자증권 API 키
+KIS_APP_KEY = "PSuTRtg5zy4tT0OOzqPus5JVteqFoeY81lvG"
+KIS_APP_SECRET = "m/y5fOAxtsabAmhxnELxJdGgBR7wLxvF5rHGVrJEmrF/Tr7WpXS8WrK1bp3+XHEdaydxbYXbjTTKKGAyXy5mSdXgxNx72+04bGYf/UV9RhpfjFUNHfsX+MZbzSCnUALsrfrF86wID91hcliWtwrnHqx6LXVvVn8O2C2ap/K6HSW/eCtxPAU="
+KIS_ACCOUNT_NO = "50162072"      # 계좌번호 앞 8자리
 KIS_ACCOUNT_CODE = "01"                 # 계좌 상품코드
 KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
+
+#  장중 OHLCV 스크래핑 설정
+STOCK_SCRAPPING_GROUPS = ["kospi"]      # 기본 추적 그룹 (stock_list.json 기준)
+STOCK_SCRAPPING_SYMBOLS = []            # 비워두면 그룹 전체에서 선택
+STOCK_SCRAPPING_LIMIT = 0               # 0이면 stock_scrapping.py의 안전 상한 자동 적용
+STOCK_SCRAPPING_BATCH_SIZE = 250
+STOCK_SCRAPPING_POLL_INTERVAL_SEC = 300
+STOCK_SCRAPPING_MIN_REQUEST_GAP_SEC = 1.0
+STOCK_SCRAPPING_MAX_RETRIES = 5
+STOCK_SCRAPPING_OUTPUT = "live_ohlcv_5m.csv"
+STOCK_SCRAPPING_EXIT_AFTER_SESSION = True
 
 #  전략 및 스크래퍼 활성화 여부 설정
 ENABLE_TASKS = {
@@ -32,6 +43,7 @@ ENABLE_TASKS = {
     "factor_momentum":    True,    # 팩터/모멘텀 전략
     "hrl_allocation":     False,   # HRL 자산 배분 전략
     "ai_closing_review":  True,    # AI 장 마감 리뷰 (예측 vs 실제 비교)
+    "stock_scrapping":    True,    # 장중 주가 OHLCV 수집
     # __INTEGRATE_MARKER_ENABLE_TASKS__
 }
 
@@ -40,6 +52,7 @@ ENABLE_TASKS = {
 DEFAULT_SCHEDULE = [
     {"time": "08:50", "task": "macro_indicators",  "description": "장 시작 전 매크로 지표 수집"},
     {"time": "08:55", "task": "ai_briefing",        "description": "AI 시장 브리핑 & 종가 예측"},
+    {"time": "09:00", "task": "stock_scrapping",    "description": "장중 주가 OHLCV 수집", "force_kill_time": "15:30"},
     {"time": "09:05", "task": "krx_disclosure",     "description": "장 시작 후 공시 수집"},
     {"time": "09:10", "task": "factor_momentum",    "description": "팩터/모멘텀 전략 실행", "force_kill_time": "09:40"},
     {"time": "09:15", "task": "hrl_allocation",     "description": "HRL 자산 배분 전략 실행"},

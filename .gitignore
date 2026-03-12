@@ -10,3 +10,7 @@ dist/
 build/
 venv/
 .venv/
+.omx
+.vscode
+test
+.pytest_cache

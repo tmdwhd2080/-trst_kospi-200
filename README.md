@@ -46,16 +46,28 @@ main_scheduler.py 실행
 
 ### 기본 스케줄
 
-| 시간 | 작업 | 설명 |
-|---|---|---|
-| 08:50 | `macro_indicators` | 장 시작 전 매크로 지표 수집 |
-| 09:05 | `krx_disclosure` | 장 시작 후 공시 수집 |
-| 09:10 | `factor_momentum` | 팩터/모멘텀 전략 실행 |
-| 09:15 | `hrl_allocation` | HRL 자산 배분 전략 실행 |
-| 12:00 | `krx_disclosure` | 점심 공시 수집 |
-| 12:05 | `macro_indicators` | 점심 매크로 지표 갱신 |
-| 15:20 | `krx_disclosure` | 장 마감 전 공시 수집 |
-| 15:35 | `macro_indicators` | 장 마감 후 최종 수집 |
+| 시간 | 작업 | 설명 | 비고 |
+|---|---|---|---|
+| 08:50 | `macro_indicators` | 장 시작 전 매크로 지표 수집 |  |
+| 08:55 | `ai_briefing` | AI 시장 브리핑 & 종가 예측 |  |
+| 09:00 | `stock_scrapping` | 장중 주가 OHLCV 수집 | 백그라운드 실행, 기본 종료 시각 `15:30` |
+| 09:05 | `krx_disclosure` | 장 시작 후 공시 수집 | `ENABLE_TASKS`에서 비활성화 가능 |
+| 09:10 | `factor_momentum` | 팩터/모멘텀 전략 실행 | 예시 종료 시각 `09:40` |
+| 09:15 | `hrl_allocation` | HRL 자산 배분 전략 실행 | `ENABLE_TASKS`에서 비활성화 가능 |
+| 12:00 | `krx_disclosure` | 점심 공시 수집 | `ENABLE_TASKS`에서 비활성화 가능 |
+| 12:05 | `macro_indicators` | 점심 매크로 지표 갱신 |  |
+| 15:20 | `krx_disclosure` | 장 마감 전 공시 수집 | `ENABLE_TASKS`에서 비활성화 가능 |
+| 15:35 | `macro_indicators` | 장 마감 후 매크로 지표 최종 수집 |  |
+| 15:45 | `ai_closing_review` | AI 장 마감 리뷰 (예측 vs 실제 비교) |  |
+
+### stock_scrapping 스케줄 메모
+
+- `settings.py` 기본 스케줄 기준으로 `09:00`에 시작하고 `15:30`까지 장중 수집을 유지합니다.
+- 스케줄러에는 백그라운드 작업으로 등록되어서, 다른 작업과 병렬로 계속 실행됩니다.
+- 봇이 장중에 다시 켜져도 현재 시각이 `09:00~15:30` 구간이면 즉시 시작하도록 되어 있습니다.
+- 기본 폴링 주기는 `STOCK_SCRAPPING_POLL_INTERVAL_SEC = 300`초이며, 결과는 기본적으로 `live_ohlcv_5m.csv`에 저장됩니다.
+- 기본 추적 그룹은 `STOCK_SCRAPPING_GROUPS = ["kospi"]`이고, 필요하면 `STOCK_SCRAPPING_SYMBOLS`, `STOCK_SCRAPPING_LIMIT`, `stock_list.json`으로 범위를 조절할 수 있습니다.
+- 끄고 싶으면 `ENABLE_TASKS["stock_scrapping"] = False`로 설정하면 됩니다.
 
 ---
 
