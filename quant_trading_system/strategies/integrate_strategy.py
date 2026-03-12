@@ -24,7 +24,7 @@ import os
 import re
 import ast
 
-# 프로젝트 루트 경로 (이 파일의 부모의 부
+# 프로젝트 루트 경로
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SCHEDULER_PATH = os.path.join(PROJECT_ROOT, "main_scheduler.py")
