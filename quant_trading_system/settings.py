@@ -18,9 +18,9 @@ GPT_MODEL = "gpt-4o-mini"              # GPT 모델명
 USE_AI_BRIEFING = True                  # AI 시장 브리핑 & 종가 예측 기능
 
 #  3. 한국투자증권 API 키
-KIS_APP_KEY = "PSuTRtg5zy4tT0OOzqPus5JVteqFoeY81lvG"
-KIS_APP_SECRET = "m/y5fOAxtsabAmhxnELxJdGgBR7wLxvF5rHGVrJEmrF/Tr7WpXS8WrK1bp3+XHEdaydxbYXbjTTKKGAyXy5mSdXgxNx72+04bGYf/UV9RhpfjFUNHfsX+MZbzSCnUALsrfrF86wID91hcliWtwrnHqx6LXVvVn8O2C2ap/K6HSW/eCtxPAU="
-KIS_ACCOUNT_NO = "50162072"      # 계좌번호 앞 8자리
+KIS_APP_KEY = ""
+KIS_APP_SECRET = ""
+KIS_ACCOUNT_NO = ""      # 계좌번호 앞 8자리
 KIS_ACCOUNT_CODE = "01"                 # 계좌 상품코드
 KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 
