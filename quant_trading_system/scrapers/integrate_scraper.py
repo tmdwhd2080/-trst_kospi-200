@@ -47,6 +47,32 @@ def extract_task_meta(filepath: str) -> dict:
     raise ValueError(f"TASK_META를 찾을 수 없습니다: {filepath}")
 
 
+def extract_run_signature_support(filepath: str) -> dict[str, bool]:
+    """run() 함수가 어떤 호출 형태를 지원하는지 AST로 확인."""
+    with open(filepath, "r", encoding="utf-8") as f:
+        source = f.read()
+    tree = ast.parse(source)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "run":
+            arg_names = [arg.arg for arg in node.args.args]
+            kwonly_names = [arg.arg for arg in node.args.kwonlyargs]
+            supports_prefetched_token = (
+                "prefetched_token" in arg_names
+                or "prefetched_token" in kwonly_names
+                or node.args.kwarg is not None
+            )
+            return {
+                "run_exists": True,
+                "supports_prefetched_token": supports_prefetched_token,
+            }
+
+    return {
+        "run_exists": False,
+        "supports_prefetched_token": False,
+    }
+
+
 def compute_module_path(filepath: str) -> str:
     """파일 경로에서 Python 모듈 경로를 계산 (프로젝트 루트 기준)."""
     rel = os.path.relpath(filepath, PROJECT_ROOT)
@@ -82,6 +108,19 @@ def validate_meta(meta: dict):
                 raise ValueError(f"schedule[{i}]['{key}'] 형식이 HH:MM이어야 합니다: {sched[key]}")
 
 
+def validate_runtime_contract(filepath: str, meta: dict):
+    """TASK_META 외에 실제 런타임 호출 계약을 확인."""
+    run_info = extract_run_signature_support(filepath)
+    if not run_info["run_exists"]:
+        raise ValueError("run() 함수를 찾을 수 없습니다")
+
+    if meta.get("run_in_background", False) and not run_info["supports_prefetched_token"]:
+        raise ValueError(
+            "run_in_background=True 인 스크래퍼는 "
+            "run(*, prefetched_token: str | None = None) 또는 동등한 keyword 인자 수용 형태가 필요합니다"
+        )
+
+
 def insert_before_marker(content: str, marker: str, new_text: str) -> str:
     """마커 주석 바로 앞에 새 텍스트를 삽입 (마커의 들여쓰기 보존)."""
     # 마커가 파일 내에서 들여쓰기와 함께 있을 수 있으므로 패턴으로 찾기
@@ -104,6 +143,29 @@ def check_duplicate(content: str, task_id: str, context: str):
         raise ValueError(f"'{task_id}'가 이미 {context}에 등록되어 있습니다")
 
 
+def find_task_registry_entry(content: str, task_id: str) -> str | None:
+    pattern = re.compile(
+        rf'^[ \t]*"{re.escape(task_id)}": \{{\n(?P<body>.*?)^[ \t]*\}},',
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(content)
+    return match.group("body") if match else None
+
+
+def has_enable_entry(content: str, task_id: str) -> bool:
+    return re.search(rf'^[ \t]*"{re.escape(task_id)}":', content, re.MULTILINE) is not None
+
+
+def has_schedule_entry(content: str, task_id: str, sched: dict) -> bool:
+    time_value = sched["time"]
+    force_kill_value = sched.get("force_kill_time", "")
+    pattern = re.compile(
+        rf'\{{[^\n]*"time": "{re.escape(time_value)}",[^\n]*"task": "{re.escape(task_id)}"[^\n]*'
+        rf'"force_kill_time": "{re.escape(force_kill_value)}"[^\n]*\}}'
+    )
+    return pattern.search(content) is not None
+
+
 def integrate(filepath: str):
     """새 스크래퍼를 전체 시스템에 통합."""
     filepath = os.path.abspath(filepath)
@@ -123,6 +185,7 @@ def integrate(filepath: str):
     try:
         meta = extract_task_meta(filepath)
         validate_meta(meta)
+        validate_runtime_contract(filepath, meta)
     except (ValueError, SyntaxError) as e:
         print(f"❌ TASK_META 검증 실패: {e}")
         return False
@@ -144,53 +207,54 @@ def integrate(filepath: str):
     with open(SCHEDULER_PATH, "r", encoding="utf-8") as f:
         scheduler_content = f.read()
 
-    try:
-        check_duplicate(scheduler_content, task_id, "TASK_REGISTRY")
-    except ValueError as e:
-        print(f"❌ {e}")
-        return False
+    existing_registry_entry = find_task_registry_entry(scheduler_content, task_id)
+    if existing_registry_entry is not None:
+        if f'"module": "{module_path}"' not in existing_registry_entry:
+            print(f"❌ '{task_id}'가 이미 TASK_REGISTRY에 다른 module로 등록되어 있습니다")
+            return False
+        print(f"  ⏭ TASK_REGISTRY에 '{task_id}'가 이미 등록되어 있어 건너뜀")
+    else:
+        registry_lines = [
+            f'    "{task_id}": {{',
+            f'        "module": "{module_path}",',
+            f'        "description": "{description}",',
+            f'        "type": "scraper",',
+        ]
+        if meta.get("run_in_background", False):
+            registry_lines.append('        "run_in_background": True,')
+        registry_lines.append("    },")
+        registry_entry = "\n".join(registry_lines)
+        try:
+            scheduler_content = insert_before_marker(
+                scheduler_content, MARKER_TASK_REGISTRY, registry_entry
+            )
+        except ValueError as e:
+            print(f"❌ {e}")
+            return False
 
-    registry_entry = (
-        f'    "{task_id}": {{\n'
-        f'        "module": "{module_path}",\n'
-        f'        "description": "{description}",\n'
-        f'        "type": "scraper",\n'
-        f'    }},'
-    )
-    try:
-        scheduler_content = insert_before_marker(
-            scheduler_content, MARKER_TASK_REGISTRY, registry_entry
-        )
-    except ValueError as e:
-        print(f"❌ {e}")
-        return False
-
-    with open(SCHEDULER_PATH, "w", encoding="utf-8") as f:
-        f.write(scheduler_content)
-    print(f"  ✔ TASK_REGISTRY에 '{task_id}' 추가 완료")
+        with open(SCHEDULER_PATH, "w", encoding="utf-8") as f:
+            f.write(scheduler_content)
+        print(f"  ✔ TASK_REGISTRY에 '{task_id}' 추가 완료")
 
     # 3. settings.py 수정 — ENABLE_TASKS + DEFAULT_SCHEDULE
     print(f"\n📝 settings.py 수정 중...")
     with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
         settings_content = f.read()
 
-    try:
-        check_duplicate(settings_content, task_id, "settings.py")
-    except ValueError as e:
-        print(f"❌ {e}")
-        return False
-
     # ENABLE_TASKS 추가
-    enabled_str = "True" if enabled else "False"
-    padding = max(1, 18 - len(task_id))
-    enable_entry = f'    "{task_id}":{" " * padding}{enabled_str},   # {description}'
-    try:
-        settings_content = insert_before_marker(
-            settings_content, MARKER_ENABLE_TASKS, enable_entry
-        )
-    except ValueError as e:
-        print(f"❌ {e}")
-        return False
+    if has_enable_entry(settings_content, task_id):
+        print(f"  ⏭ ENABLE_TASKS에 '{task_id}'가 이미 등록되어 있어 건너뜀")
+    else:
+        enabled_str = "True" if enabled else "False"
+        padding = max(1, 18 - len(task_id))
+        enable_entry = f'    "{task_id}":{" " * padding}{enabled_str},   # {description}'
+        try:
+            settings_content = insert_before_marker(
+                settings_content, MARKER_ENABLE_TASKS, enable_entry
+            )
+        except ValueError as e:
+            print(f"❌ {e}")
+            return False
 
     # DEFAULT_SCHEDULE 추가
     for sched in schedules:
@@ -208,6 +272,9 @@ def integrate(filepath: str):
                 f'    {{"time": "{sched_time}", "task": "{task_id}", '
                 f'"description": "{sched_desc}"}},'
             )
+        if has_schedule_entry(settings_content, task_id, sched):
+            print(f"  ⏭ DEFAULT_SCHEDULE에 '{task_id}' {sched_time} 일정이 이미 있어 건너뜀")
+            continue
         try:
             settings_content = insert_before_marker(
                 settings_content, MARKER_DEFAULT_SCHEDULE, schedule_entry
@@ -218,8 +285,7 @@ def integrate(filepath: str):
 
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         f.write(settings_content)
-    print(f"  ✔ ENABLE_TASKS에 '{task_id}' 추가 완료")
-    print(f"  ✔ DEFAULT_SCHEDULE에 {len(schedules)}개 스케줄 추가 완료")
+    print(f"  ✔ settings.py 반영 완료")
 
     # 완료 요약
     print(f"\n{'=' * 50}")

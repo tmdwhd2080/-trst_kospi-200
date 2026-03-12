@@ -52,7 +52,6 @@ UPLOAD_ITEMS = [
     "settings.py",
     "requirements.txt",
     ".env",
-    "stock_scrapping.py",
     "stock_list.json",
     "utils/",
     "scrapers/",

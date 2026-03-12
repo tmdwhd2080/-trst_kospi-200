@@ -22,6 +22,7 @@ TASK_META = {
     "description": "나의 새 스크래퍼 설명",    # 작업 설명 (한글 가능)
     "type": "scraper",                        # ← "scraper" 고정 (변경 금지)
     "enabled": True,                          # 활성화 여부 (True/False)
+    "run_in_background": False,               # 선택: 백그라운드 스레드 실행 여부
     "schedule": [
         {
             "time": "09:00",                  #  실행 시작 시간 (HH:MM, 필수)
@@ -60,6 +61,14 @@ def run() -> dict:
       - 함수명: run
       - 파라미터: 없음
       - 반환: dict
+
+    ※ TASK_META에서 "run_in_background": True 를 쓰는 경우에는
+       main_scheduler.py가 `run(prefetched_token=...)` 형태로 호출하므로,
+       아래처럼 keyword 인자를 받을 수 있어야 합니다.
+
+       예:
+         def run(*, prefetched_token: str | None = None) -> dict:
+             ...
 
     Returns:
         dict: 수집 결과 (자유 형식)

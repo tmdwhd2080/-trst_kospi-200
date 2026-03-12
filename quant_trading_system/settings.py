@@ -27,7 +27,7 @@ KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 #  장중 OHLCV 스크래핑 설정
 STOCK_SCRAPPING_GROUPS = ["kospi"]      # 기본 추적 그룹 (stock_list.json 기준)
 STOCK_SCRAPPING_SYMBOLS = []            # 비워두면 그룹 전체에서 선택
-STOCK_SCRAPPING_LIMIT = 0               # 0이면 stock_scrapping.py의 안전 상한 자동 적용
+STOCK_SCRAPPING_LIMIT = 0               # 0이면 scrapers/stock_scrapping.py의 안전 상한 자동 적용
 STOCK_SCRAPPING_BATCH_SIZE = 250
 STOCK_SCRAPPING_POLL_INTERVAL_SEC = 300
 STOCK_SCRAPPING_MIN_REQUEST_GAP_SEC = 1.0
