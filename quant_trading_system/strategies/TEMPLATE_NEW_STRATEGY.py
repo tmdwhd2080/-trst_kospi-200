@@ -11,7 +11,7 @@
   4. 통합 스크립트 실행:
      python strategies/integrate_strategy.py strategies/<파일명>.py
 
-★ TASK_META의 schedule에 time(시작 시간)과 force_kill_time(강제 종료 시간)을
+TASK_META의 schedule에 time(시작 시간)과 force_kill_time(강제 종료 시간)을
   반드시 작성해야 합니다.
 """
 
